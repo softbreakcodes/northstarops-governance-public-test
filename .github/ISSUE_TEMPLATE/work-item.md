@@ -33,6 +33,9 @@ tests/...
 
 Aşağıdaki alanlara dokunulmamalıdır:
 
+- `.github/**`
+- `**/*.yml`
+- `**/*.yaml`
 - unrelated modules
 - database / migrations
 - shared infrastructure
