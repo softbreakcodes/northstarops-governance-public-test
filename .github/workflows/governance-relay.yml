@@ -19,17 +19,13 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   relay:
     if: >-
       github.event_name != 'issue_comment' ||
-      (
-        github.event.comment.body == '/claim' &&
-        github.event.issue.state == 'open' &&
-        github.event.issue.assignee == null &&
-        contains(github.event.issue.labels.*.name, 'status: available')
-      )
+      github.event.comment.body == '/claim'
 
     runs-on: ubuntu-latest
 
@@ -38,7 +34,49 @@ jobs:
       cancel-in-progress: ${{ github.event_name == 'issue_comment' }}
 
     steps:
+      - name: Reply when contributor already claimed this Issue
+        if: >-
+          github.event_name == 'issue_comment' &&
+          github.event.comment.body == '/claim' &&
+          github.event.issue.assignee != null &&
+          github.event.issue.assignee.login == github.actor
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          MESSAGE="ℹ️ @${ACTOR} bu Issue'yu zaten claim yaptın."
+          jq -n --arg body "${MESSAGE}" '{body: $body}' \
+            | gh api --method POST "repos/${SOURCE_REPO}/issues/${ISSUE_NUMBER}/comments" --input -
+
+      - name: Reply when Issue is claimed by another contributor
+        if: >-
+          github.event_name == 'issue_comment' &&
+          github.event.comment.body == '/claim' &&
+          github.event.issue.assignee != null &&
+          github.event.issue.assignee.login != github.actor
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ACTOR: ${{ github.actor }}
+          ASSIGNEE: ${{ github.event.issue.assignee.login }}
+        run: |
+          MESSAGE="⚠️ @${ACTOR} bu Issue üzerinde @${ASSIGNEE} tarafından claim yapılmış."
+          jq -n --arg body "${MESSAGE}" '{body: $body}' \
+            | gh api --method POST "repos/${SOURCE_REPO}/issues/${ISSUE_NUMBER}/comments" --input -
+
       - name: Dispatch governance event
+        if: >-
+          github.event_name != 'issue_comment' ||
+          (
+            github.event.issue.state == 'open' &&
+            github.event.issue.assignee == null &&
+            contains(github.event.issue.labels.*.name, 'status: available')
+          )
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GOVERNANCE_DISPATCH_TOKEN }}
