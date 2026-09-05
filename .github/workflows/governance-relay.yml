@@ -22,7 +22,20 @@ permissions:
 
 jobs:
   relay:
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (
+        github.event.comment.body == '/claim' &&
+        github.event.issue.state == 'open' &&
+        github.event.issue.assignee == null &&
+        contains(github.event.issue.labels.*.name, 'status: available')
+      )
+
     runs-on: ubuntu-latest
+
+    concurrency:
+      group: relay-${{ github.repository }}-${{ github.event_name == 'issue_comment' && format('claim-{0}', github.actor) || format('{0}-{1}', github.event_name, github.run_id) }}
+      cancel-in-progress: ${{ github.event_name == 'issue_comment' }}
 
     steps:
       - name: Dispatch governance event
