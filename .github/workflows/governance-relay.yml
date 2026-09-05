@@ -16,6 +16,7 @@ on:
       - edited
       - ready_for_review
       - converted_to_draft
+      - closed
 
 permissions:
   contents: read
@@ -24,8 +25,8 @@ permissions:
 jobs:
   relay:
     if: >-
-      github.event_name != 'issue_comment' ||
-      github.event.comment.body == '/claim'
+      (github.event_name != 'issue_comment' || github.event.comment.body == '/claim') &&
+      (github.event_name != 'pull_request_target' || github.event.pull_request.head.repo.full_name != github.repository)
 
     runs-on: ubuntu-latest
 
