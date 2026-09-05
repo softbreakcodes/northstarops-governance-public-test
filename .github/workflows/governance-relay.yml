@@ -16,6 +16,7 @@ on:
       - edited
       - ready_for_review
       - converted_to_draft
+      - closed
 
 permissions:
   contents: read
