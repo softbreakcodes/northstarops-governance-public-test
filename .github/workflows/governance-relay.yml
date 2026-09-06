@@ -24,56 +24,21 @@ on:
 
 permissions:
   contents: read
-  issues: write
+  issues: read
 
 jobs:
   relay:
     if: >-
-      (github.event_name != 'issue_comment' || github.event.comment.body == '/claim') &&
+      (github.event_name != 'issue_comment' || (github.event.issue.pull_request == null && github.event.comment.body == '/claim')) &&
       (!contains(fromJSON('["pull_request_target","pull_request_review"]'), github.event_name) || github.event.pull_request.head.repo.full_name != github.repository)
 
     runs-on: ubuntu-latest
 
     concurrency:
-      group: relay-${{ github.repository }}-${{ github.event_name == 'issue_comment' && format('claim-{0}', github.actor) || format('{0}-{1}', github.event_name, github.run_id) }}
-      cancel-in-progress: ${{ github.event_name == 'issue_comment' }}
+      group: relay-${{ github.repository }}-${{ github.event_name == 'issue_comment' && format('claim-issue-{0}', github.event.issue.number) || format('{0}-{1}', github.event_name, github.run_id) }}
+      queue: max
 
     steps:
-      - name: Reply when contributor already claimed this Issue
-        if: >-
-          github.event_name == 'issue_comment' &&
-          github.event.comment.body == '/claim' &&
-          github.event.issue.assignee != null &&
-          github.event.issue.assignee.login == github.actor
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ACTOR: ${{ github.actor }}
-        run: |
-          MESSAGE="ℹ️ @${ACTOR} bu Issue'yu zaten claim yaptın."
-          jq -n --arg body "${MESSAGE}" '{body: $body}' \
-            | gh api --method POST "repos/${SOURCE_REPO}/issues/${ISSUE_NUMBER}/comments" --input -
-
-      - name: Reply when Issue is claimed by another contributor
-        if: >-
-          github.event_name == 'issue_comment' &&
-          github.event.comment.body == '/claim' &&
-          github.event.issue.assignee != null &&
-          github.event.issue.assignee.login != github.actor
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ACTOR: ${{ github.actor }}
-          ASSIGNEE: ${{ github.event.issue.assignee.login }}
-        run: |
-          MESSAGE="⚠️ @${ACTOR} bu Issue üzerinde @${ASSIGNEE} tarafından claim yapılmış."
-          jq -n --arg body "${MESSAGE}" '{body: $body}' \
-            | gh api --method POST "repos/${SOURCE_REPO}/issues/${ISSUE_NUMBER}/comments" --input -
-
       - name: Dispatch lifecycle event
         if: >-
           github.event_name != 'issue_comment' ||
@@ -85,7 +50,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GOVERNANCE_DISPATCH_TOKEN }}
-          DISPATCH_EVENT_TYPE: ${{ github.event_name == 'issues' && 'northstarops-publish-event' || 'northstarops-governance-event' }}
+          DISPATCH_EVENT_TYPE: ${{ github.event_name == 'issues' && 'northstarops-publish-event' || github.event_name == 'issue_comment' && 'northstarops-claim-event' || 'northstarops-governance-event' }}
           SOURCE_REPO: ${{ github.repository }}
           SOURCE_EVENT: ${{ github.event_name }}
           ACTOR: ${{ github.actor }}
