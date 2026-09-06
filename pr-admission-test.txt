@@ -1,1 +1,1 @@
-PR admission test for issue #18
+PR Admission lifecycle test for issue #36.
