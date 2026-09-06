@@ -53,6 +53,7 @@ jobs:
           DISPATCH_EVENT_TYPE: ${{ github.event_name == 'issues' && 'northstarops-publish-event' || github.event_name == 'issue_comment' && 'northstarops-claim-event' || 'northstarops-governance-event' }}
           SOURCE_REPO: ${{ github.repository }}
           SOURCE_EVENT: ${{ github.event_name }}
+          SOURCE_ACTION: ${{ github.event.action }}
           ACTOR: ${{ github.actor }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -71,6 +72,7 @@ jobs:
             "client_payload": {
               "source_repo": "${SOURCE_REPO}",
               "source_event": "${SOURCE_EVENT}",
+              "source_action": "${SOURCE_ACTION}",
               "issue_number": "${ISSUE_NUMBER}",
               "pr_number": "${PR_NUMBER}",
               "comment_id": "${COMMENT_ID}",
